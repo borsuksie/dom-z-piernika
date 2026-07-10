@@ -1,8 +1,19 @@
 ---
 import { verifySessionToken, SESSION_COOKIE } from '../../lib/auth';
-import { getSiteSettings, setSiteSettings, getAllPoiNotices, setPoiNotice } from '../../lib/site';
+import {
+  getSiteSettings,
+  setSiteSettings,
+  getAllPoiOverrides,
+  setPoiOverride,
+  getGalleryPhotos,
+  setGalleryPhotos,
+  getUploadedPhotos,
+  uploadHousePhoto,
+  uploadPoiPhoto,
+} from '../../lib/site';
 import { poisByCategory, findPoi } from '../../data/guide/pois';
 import { categorySlugs, categoryIcons, type CategorySlug } from '../../data/guide/categories';
+import { photos as staticPhotos } from '../../data/photos';
 
 export const prerender = false;
 
@@ -28,11 +39,13 @@ if (Astro.request.method === 'POST') {
   if (action === 'settings') {
     const bookingUrl = String(form.get('bookingUrl') ?? '').trim();
     const contactEmail = String(form.get('contactEmail') ?? '').trim();
+    const aboutText = String(form.get('aboutText') ?? '');
     if (!bookingUrl || !contactEmail) {
       error = 'Link do rezerwacji i e-mail są wymagane.';
     } else {
       try {
-        await setSiteSettings({ bookingUrl, contactEmail });
+        const current = await getSiteSettings();
+        await setSiteSettings({ bookingUrl, contactEmail, aboutText, heroPhotoUrl: current.heroPhotoUrl });
         message = 'Zapisano dane podstawowe.';
       } catch (e) {
         error = e instanceof Error ? e.message : 'Nie udało się zapisać.';
@@ -40,16 +53,70 @@ if (Astro.request.method === 'POST') {
     }
   }
 
-  if (action === 'notice') {
+  if (action === 'upload-house-photo') {
+    const file = form.get('photo');
+    if (!(file instanceof File) || file.size === 0) {
+      error = 'Wybierz plik zdjęcia.';
+    } else {
+      try {
+        await uploadHousePhoto(file);
+        message = 'Wgrano zdjęcie. Zaznacz je poniżej jako główne lub dodaj do galerii.';
+      } catch (e) {
+        error = e instanceof Error ? e.message : 'Nie udało się wgrać zdjęcia.';
+      }
+    }
+  }
+
+  if (action === 'photos') {
+    try {
+      const count = Number(form.get('photoCount') ?? 0);
+      const selected: { url: string; order: number }[] = [];
+      for (let i = 0; i < count; i++) {
+        const url = String(form.get(`url_${i}`) ?? '');
+        const inGallery = form.get(`inGallery_${i}`) === 'on';
+        if (url && inGallery) {
+          const order = Number(form.get(`order_${i}`)) || i + 1;
+          selected.push({ url, order });
+        }
+      }
+      selected.sort((a, b) => a.order - b.order);
+      await setGalleryPhotos(selected.map((p) => p.url));
+
+      const heroUrl = String(form.get('hero') ?? '');
+      const current = await getSiteSettings();
+      await setSiteSettings({ ...current, heroPhotoUrl: heroUrl || undefined });
+
+      message = 'Zapisano wybór zdjęć.';
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Nie udało się zapisać.';
+    }
+  }
+
+  if (action === 'poi-update') {
     const poiId = String(form.get('poiId') ?? '');
-    const notice = String(form.get('notice') ?? '');
     const poi = findPoi(poiId);
     if (!poi) {
       error = 'Nieznane miejsce.';
     } else {
       try {
-        await setPoiNotice(poiId, notice);
-        message = `Zaktualizowano notatkę dla „${poi.name}”.`;
+        const orderRaw = String(form.get('order') ?? '').trim();
+        await setPoiOverride(poiId, {
+          forWhom: String(form.get('forWhom') ?? ''),
+          description: String(form.get('description') ?? ''),
+          hours: String(form.get('hours') ?? ''),
+          order: orderRaw ? Number(orderRaw) : undefined,
+        });
+
+        if (form.get('removeImage') === 'on') {
+          await setPoiOverride(poiId, { image: '' });
+        }
+
+        const file = form.get('photo');
+        if (file instanceof File && file.size > 0) {
+          await uploadPoiPhoto(poiId, file);
+        }
+
+        message = `Zaktualizowano „${poi.name}”.`;
       } catch (e) {
         error = e instanceof Error ? e.message : 'Nie udało się zapisać.';
       }
@@ -58,7 +125,11 @@ if (Astro.request.method === 'POST') {
 }
 
 const settings = await getSiteSettings();
-const notices = await getAllPoiNotices();
+const overrides = await getAllPoiOverrides();
+const galleryPhotos = await getGalleryPhotos();
+const uploadedPhotos = await getUploadedPhotos();
+
+const allPhotos = [...uploadedPhotos].reverse().concat(staticPhotos.map((p) => p.src));
 
 const categoryLabels: Record<CategorySlug, string> = {
   restauracje: 'Restauracje i kawiarnie',
@@ -105,39 +176,112 @@ const categoryLabels: Record<CategorySlug, string> = {
           <label for="contactEmail">E-mail kontaktowy</label>
           <input id="contactEmail" name="contactEmail" type="email" value={settings.contactEmail} required />
 
+          <label for="aboutText">Opis domu (każdy akapit oddzielony pustą linią)</label>
+          <textarea id="aboutText" name="aboutText" rows="8">{settings.aboutText ?? ''}</textarea>
+          <p class="hint">Puste pole = zostaje domyślny opis wpisany w kodzie strony.</p>
+
           {settings.updatedAt && (
             <p class="updated">Ostatnia aktualizacja: {new Date(settings.updatedAt).toLocaleString('pl-PL')}</p>
           )}
 
           <button type="submit">Zapisz</button>
         </form>
-        <p class="hint">
-          Zdjęcia domu edytuje się wrzucając plik do <code>public/images/house/</code> i dopisując go w
-          <code>src/data/photos.ts</code>.
-        </p>
       </section>
 
       <section>
-        <h2>Godziny / ceny w przewodniku</h2>
+        <h2>Zdjęcia domu</h2>
+
+        <form method="POST" enctype="multipart/form-data" class="card upload-card">
+          <input type="hidden" name="action" value="upload-house-photo" />
+          <label for="housePhoto">Wgraj nowe zdjęcie</label>
+          <input id="housePhoto" name="photo" type="file" accept="image/*" required />
+          <button type="submit">Wgraj</button>
+        </form>
+
         <p class="hint">
-          Pole „notatka” nadpisuje domyślny tekst godzin/cen dla danego miejsca na stronie (widoczne we
-          wszystkich językach). Zostaw puste, żeby wrócić do domyślnego opisu.
+          Zaznacz jedno zdjęcie jako <strong>główne</strong> (tło na górze strony) i wybierz, które mają być w
+          <strong>galerii</strong> — z numerem kolejności (mniejsza liczba = wcześniej).
+        </p>
+
+        <form method="POST" class="photo-grid-form">
+          <input type="hidden" name="action" value="photos" />
+          <input type="hidden" name="photoCount" value={allPhotos.length} />
+
+          <div class="photo-grid">
+            {allPhotos.map((url, i) => {
+              const galleryIndex = galleryPhotos.indexOf(url);
+              const inGallery = galleryIndex !== -1;
+              const isHero = settings.heroPhotoUrl === url || (!settings.heroPhotoUrl && i === allPhotos.length - 1);
+              return (
+                <div class="photo-item">
+                  <input type="hidden" name={`url_${i}`} value={url} />
+                  <img src={url} alt="" loading="lazy" />
+                  <label class="radio-line">
+                    <input type="radio" name="hero" value={url} checked={isHero} /> Główne
+                  </label>
+                  <label class="check-line">
+                    <input type="checkbox" name={`inGallery_${i}`} checked={inGallery} /> W galerii
+                  </label>
+                  <label class="order-line">
+                    Kolejność
+                    <input type="number" name={`order_${i}`} value={inGallery ? galleryIndex + 1 : ''} min="1" />
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+
+          <button type="submit">Zapisz wybór zdjęć</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Miejsca w przewodniku</h2>
+        <p class="hint">
+          Zmiana opisu/„dla kogo”/godzin dotyczy wersji polskiej strony. Pole „kolejność” ustala pozycję w danej
+          kategorii (mniejsza liczba = wyżej). Zdjęcie można wgrać dla każdego miejsca osobno.
         </p>
 
         {categorySlugs.map((slug) => (
           <details class="category-block">
             <summary>{categoryIcons[slug]} {categoryLabels[slug]} ({poisByCategory(slug).length})</summary>
             <div class="cards">
-              {poisByCategory(slug).map((poi) => (
-                <form method="POST" class="card">
-                  <input type="hidden" name="action" value="notice" />
-                  <input type="hidden" name="poiId" value={poi.id} />
-                  <h3>{poi.name}</h3>
-                  <label for={`notice-${poi.id}`}>Notatka (godziny / ceny)</label>
-                  <textarea id={`notice-${poi.id}`} name="notice" rows="2">{notices[poi.id]}</textarea>
-                  <button type="submit">Zapisz</button>
-                </form>
-              ))}
+              {poisByCategory(slug).map((poi) => {
+                const ov = overrides[poi.id] ?? {};
+                const currentImage = ov.image || poi.image;
+                return (
+                  <form method="POST" enctype="multipart/form-data" class="card poi-card-form">
+                    <input type="hidden" name="action" value="poi-update" />
+                    <input type="hidden" name="poiId" value={poi.id} />
+                    <h3>{poi.name}</h3>
+
+                    {currentImage && <img class="poi-thumb" src={currentImage} alt="" loading="lazy" />}
+
+                    <label for={`forWhom-${poi.id}`}>Dla kogo</label>
+                    <input id={`forWhom-${poi.id}`} name="forWhom" type="text" value={ov.forWhom ?? ''} placeholder="(domyślny tekst)" />
+
+                    <label for={`description-${poi.id}`}>Opis</label>
+                    <textarea id={`description-${poi.id}`} name="description" rows="3" placeholder="(domyślny tekst)">{ov.description ?? ''}</textarea>
+
+                    <label for={`hours-${poi.id}`}>Godziny / ceny</label>
+                    <textarea id={`hours-${poi.id}`} name="hours" rows="2" placeholder="(domyślny tekst)">{ov.hours ?? ''}</textarea>
+
+                    <label for={`order-${poi.id}`}>Kolejność w kategorii</label>
+                    <input id={`order-${poi.id}`} name="order" type="number" value={ov.order ?? ''} placeholder="domyślna" />
+
+                    <label for={`photo-${poi.id}`}>Zdjęcie (nowy plik nadpisze obecne)</label>
+                    <input id={`photo-${poi.id}`} name="photo" type="file" accept="image/*" />
+
+                    {currentImage && (
+                      <label class="check-line">
+                        <input type="checkbox" name="removeImage" /> Usuń obecne zdjęcie
+                      </label>
+                    )}
+
+                    <button type="submit">Zapisz</button>
+                  </form>
+                );
+              })}
             </div>
           </details>
         ))}
@@ -168,7 +312,7 @@ const categoryLabels: Record<CategorySlug, string> = {
     margin: 0;
   }
   main {
-    max-width: 960px;
+    max-width: 1080px;
     margin: 0 auto;
     padding: 1.5rem;
   }
@@ -184,6 +328,10 @@ const categoryLabels: Record<CategorySlug, string> = {
   }
   .settings-card {
     max-width: 480px;
+  }
+  .upload-card {
+    max-width: 480px;
+    margin-bottom: 1rem;
   }
   .cards {
     display: grid;
@@ -204,6 +352,12 @@ const categoryLabels: Record<CategorySlug, string> = {
     margin: 0 0 0.25rem;
     font-size: 0.95rem;
   }
+  .poi-thumb {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    border-radius: 8px;
+  }
   label {
     font-size: 0.8rem;
     color: #c9b8a4;
@@ -211,6 +365,8 @@ const categoryLabels: Record<CategorySlug, string> = {
   input[type='text'],
   input[type='url'],
   input[type='email'],
+  input[type='number'],
+  input[type='file'],
   textarea {
     background: #34271a;
     border: 1px solid #40311f;
@@ -262,5 +418,50 @@ const categoryLabels: Record<CategorySlug, string> = {
   .category-block summary {
     cursor: pointer;
     font-weight: 600;
+  }
+  .photo-grid-form {
+    background: #241a12;
+    border: 1px solid #40311f;
+    border-radius: 12px;
+    padding: 1rem;
+  }
+  .photo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    max-height: 560px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+  }
+  .photo-item {
+    background: #2a1f16;
+    border: 1px solid #40311f;
+    border-radius: 10px;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+  }
+  .photo-item img {
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    border-radius: 6px;
+  }
+  .radio-line,
+  .check-line,
+  .order-line {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.75rem;
+    color: #c9b8a4;
+  }
+  .order-line input {
+    width: 3.5rem;
+    padding: 0.2rem 0.4rem;
+    font-size: 0.8rem;
   }
 </style>

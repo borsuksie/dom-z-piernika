@@ -7,7 +7,7 @@ import { getGuideDictionary } from '../i18n/guide';
 import { houseFacts } from '../data/house';
 import { categorySlugs, categoryIcons, type CategorySlug } from '../data/guide/categories';
 import { poisByCategory } from '../data/guide/pois';
-import { getAllPoiNotices } from '../lib/site';
+import { getAllPoiOverrides } from '../lib/site';
 
 interface Props {
   locale: Locale;
@@ -17,9 +17,13 @@ interface Props {
 const { locale, category } = Astro.props;
 const t = getDictionary(locale);
 const guideCopy = getGuideDictionary(locale);
-const notices = await getAllPoiNotices();
+const overrides = await getAllPoiOverrides();
 
-const items = poisByCategory(category);
+const items = [...poisByCategory(category)].sort((a, b) => {
+  const orderA = overrides[a.id]?.order ?? 999;
+  const orderB = overrides[b.id]?.order ?? 999;
+  return orderA - orderB;
+});
 const categoryCopy = t.categories[category];
 
 const site = Astro.site ?? new URL('https://domekzpiernika.com');
@@ -42,7 +46,7 @@ const jsonLd = [
       item: {
         '@type': 'TouristAttraction',
         name: poi.name,
-        description: guideCopy[poi.id]?.description,
+        description: overrides[poi.id]?.description || guideCopy[poi.id]?.description,
         url: poi.mapsUrl,
       },
     })),
@@ -86,7 +90,7 @@ const jsonLd = [
 
     <section class="poi-grid">
       {items.map((poi) => (
-        <PoiCard poi={poi} copy={guideCopy[poi.id]} notice={notices[poi.id] ?? ''} t={t.guideCategory} />
+        <PoiCard poi={poi} copy={guideCopy[poi.id]} override={overrides[poi.id] ?? {}} t={t.guideCategory} />
       ))}
     </section>
 

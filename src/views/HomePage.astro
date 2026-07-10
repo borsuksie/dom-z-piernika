@@ -8,7 +8,7 @@ import { houseFacts, amenityOrder, amenityIcons } from '../data/house';
 import { photos } from '../data/photos';
 import { categorySlugs, categoryIcons } from '../data/guide/categories';
 import { poisByCategory } from '../data/guide/pois';
-import { getSiteSettings } from '../lib/site';
+import { getSiteSettings, getGalleryPhotos } from '../lib/site';
 
 interface Props {
   locale: Locale;
@@ -17,11 +17,21 @@ interface Props {
 const { locale } = Astro.props;
 const t = getDictionary(locale);
 const settings = await getSiteSettings();
+const curatedGallery = await getGalleryPhotos();
 
 const site = Astro.site ?? new URL('https://domekzpiernika.com');
 const pageUrl = new URL(`/${locale}/`, site).toString();
 
-const featuredPhotos = photos.filter((p) => p.featured);
+const defaultFeatured = photos.filter((p) => p.featured);
+const galleryPhotos = curatedGallery.length
+  ? curatedGallery.map((url, i) => ({ id: `gallery-${i}`, src: url }))
+  : defaultFeatured;
+
+const heroPhotoSrc = settings.heroPhotoUrl || defaultFeatured[0]?.src;
+
+const aboutParagraphs = settings.aboutText
+  ? settings.aboutText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean)
+  : t.about.paragraphs;
 
 const jsonLd = [
   {
@@ -35,14 +45,14 @@ const jsonLd = [
       streetAddress: houseFacts.address,
       addressCountry: 'PL',
     },
-    image: featuredPhotos.slice(0, 5).map((p) => new URL(p.src, site).toString()),
+    image: galleryPhotos.slice(0, 5).map((p) => new URL(p.src, site).toString()),
     inLanguage: locale,
   },
 ];
 ---
 
-<BaseLayout locale={locale} title={t.meta.title} description={t.meta.description} path="" jsonLd={jsonLd} image={featuredPhotos[0]?.src}>
-  <div class="hero" style={`background-image: linear-gradient(180deg, rgba(20,12,6,0.35) 0%, rgba(20,12,6,0.55) 60%, rgba(20,12,6,0.85) 100%), url(${featuredPhotos[0]?.src})`}>
+<BaseLayout locale={locale} title={t.meta.title} description={t.meta.description} path="" jsonLd={jsonLd} image={heroPhotoSrc}>
+  <div class="hero" style={`background-image: linear-gradient(180deg, rgba(20,12,6,0.35) 0%, rgba(20,12,6,0.55) 60%, rgba(20,12,6,0.85) 100%), url(${heroPhotoSrc})`}>
     <SiteHeader locale={locale} t={t} path="" transparent />
     <div class="hero-content">
       <p class="eyebrow">Szczawno-Zdrój</p>
@@ -59,12 +69,12 @@ const jsonLd = [
 
   <main>
     <section class="gallery-section">
-      <Gallery photos={featuredPhotos} alt={t.hero.title} />
+      <Gallery photos={galleryPhotos} alt={t.hero.title} />
     </section>
 
     <section class="about">
       <h2>{t.about.heading}</h2>
-      {t.about.paragraphs.map((p) => <p>{p}</p>)}
+      {aboutParagraphs.map((p) => <p>{p}</p>)}
       <p class="address-line">
         <strong>{t.about.addressLabel}:</strong> {houseFacts.address} ·{' '}
         <a href={houseFacts.mapsUrl} target="_blank" rel="noopener noreferrer">{t.about.mapLabel} →</a>

@@ -2,27 +2,31 @@
 import type { Poi } from '../data/guide/pois';
 import type { PoiCopy } from '../i18n/guide/types';
 import type { Dictionary } from '../i18n';
+import type { PoiOverride } from '../lib/site';
 import { distanceParts, distanceKmLabel } from '../lib/distance';
 
 interface Props {
   poi: Poi;
   copy: PoiCopy;
-  notice: string;
+  override: PoiOverride;
   t: Dictionary['guideCategory'];
 }
 
-const { poi, copy, notice, t } = Astro.props;
+const { poi, copy, override, t } = Astro.props;
 const parts = distanceParts(poi.distance, t);
 const km = distanceKmLabel(poi.distance);
 
 const badgeLabel = poi.badge === 'top' ? t.badgeTop : poi.badge === 'unesco' ? t.badgeUnesco : poi.badge === 'recommended' ? t.badgeRecommended : null;
-const hours = notice || copy.hours;
+const hours = override.hours || copy.hours;
+const forWhom = override.forWhom || copy.forWhom;
+const description = override.description || copy.description;
+const image = override.image || poi.image;
 ---
 
 <article class="poi-card">
-  {poi.image && (
+  {image && (
     <div class="poi-image">
-      <img src={poi.image} alt={poi.name} loading="lazy" width="480" height="320" />
+      <img src={image} alt={poi.name} loading="lazy" width="480" height="320" />
     </div>
   )}
   <div class="poi-body">
@@ -38,8 +42,8 @@ const hours = notice || copy.hours;
       ))}
     </div>
 
-    <p class="for-whom"><strong>{t.forWhomLabel}:</strong> {copy.forWhom}</p>
-    <p class="description">{copy.description}</p>
+    <p class="for-whom"><strong>{t.forWhomLabel}:</strong> {forWhom}</p>
+    <p class="description">{description}</p>
     <p class="hours"><strong>{t.hoursLabel}:</strong> {hours}</p>
 
     {poi.address && <p class="address">📍 {poi.address}</p>}
