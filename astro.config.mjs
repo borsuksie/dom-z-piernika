@@ -5,7 +5,7 @@ import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://domzpiernika.pl',
+  site: 'https://domekzpiernika.com',
   output: 'server',
   adapter: vercel(),
   integrations: [

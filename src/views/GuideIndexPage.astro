@@ -14,7 +14,7 @@ interface Props {
 const { locale } = Astro.props;
 const t = getDictionary(locale);
 
-const site = Astro.site ?? new URL('https://domzpiernika.pl');
+const site = Astro.site ?? new URL('https://domekzpiernika.com');
 const pageUrl = new URL(`/${locale}/guide/`, site).toString();
 const homeUrl = new URL(`/${locale}/`, site).toString();
 

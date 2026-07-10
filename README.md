@@ -49,7 +49,7 @@ Wrzuć plik do `public/images/house/` i dopisz go w `src/data/photos.ts`.
 
 1. Wypchnij repo na GitHub i zaimportuj w Vercel.
 2. Ustaw zmienne środowiskowe (jak w `.env`) w ustawieniach projektu Vercel.
-3. Zaktualizuj domenę w `astro.config.mjs` (`site`) i `public/robots.txt`, jeśli inna niż `domzpiernika.pl`.
+3. Zaktualizuj domenę w `astro.config.mjs` (`site`) i `public/robots.txt`, jeśli inna niż `domekzpiernika.com`.
 
 ## SEO
 

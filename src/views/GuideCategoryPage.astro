@@ -22,7 +22,7 @@ const notices = await getAllPoiNotices();
 const items = poisByCategory(category);
 const categoryCopy = t.categories[category];
 
-const site = Astro.site ?? new URL('https://domzpiernika.pl');
+const site = Astro.site ?? new URL('https://domekzpiernika.com');
 const pageUrl = new URL(`/${locale}/guide/${category}/`, site).toString();
 const homeUrl = new URL(`/${locale}/`, site).toString();
 const guideUrl = new URL(`/${locale}/guide/`, site).toString();
