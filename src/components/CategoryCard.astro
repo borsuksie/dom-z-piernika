@@ -1,0 +1,68 @@
+---
+import type { CategorySlug } from '../data/guide/categories';
+import type { Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  slug: CategorySlug;
+  icon: string;
+  name: string;
+  description: string;
+  count: number;
+  placesLabel: string;
+}
+
+const { locale, slug, icon, name, description, count, placesLabel } = Astro.props;
+---
+
+<a class="category-card" href={`/${locale}/guide/${slug}/`}>
+  <span class="icon">{icon}</span>
+  <div>
+    <h3>{name}</h3>
+    <p>{description}</p>
+    <span class="count">{count} {placesLabel}</span>
+  </div>
+</a>
+
+<style>
+  .category-card {
+    display: flex;
+    gap: 0.9rem;
+    align-items: flex-start;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.2rem;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .category-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+  }
+
+  .icon {
+    font-size: 1.8rem;
+    line-height: 1;
+  }
+
+  h3 {
+    margin: 0 0 0.3rem;
+    font-size: 1.05rem;
+  }
+
+  p {
+    margin: 0 0 0.4rem;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.4;
+  }
+
+  .count {
+    font-size: 0.78rem;
+    color: var(--accent);
+    font-weight: 600;
+  }
+</style>

@@ -1,0 +1,173 @@
+---
+import type { Poi } from '../data/guide/pois';
+import type { PoiCopy } from '../i18n/guide/types';
+import type { Dictionary } from '../i18n';
+import { distanceParts, distanceKmLabel } from '../lib/distance';
+
+interface Props {
+  poi: Poi;
+  copy: PoiCopy;
+  notice: string;
+  t: Dictionary['guideCategory'];
+}
+
+const { poi, copy, notice, t } = Astro.props;
+const parts = distanceParts(poi.distance, t);
+const km = distanceKmLabel(poi.distance);
+
+const badgeLabel = poi.badge === 'top' ? t.badgeTop : poi.badge === 'unesco' ? t.badgeUnesco : poi.badge === 'recommended' ? t.badgeRecommended : null;
+const hours = notice || copy.hours;
+---
+
+<article class="poi-card">
+  {poi.image && (
+    <div class="poi-image">
+      <img src={poi.image} alt={poi.name} loading="lazy" width="480" height="320" />
+    </div>
+  )}
+  <div class="poi-body">
+    <div class="poi-head">
+      <h3>{poi.name}</h3>
+      {badgeLabel && <span class="badge" data-type={poi.badge}>{badgeLabel}</span>}
+    </div>
+
+    <div class="distance">
+      {km && <span class="km">📍 {km}</span>}
+      {parts.map((part) => (
+        <span class="part">{part.icon} {part.label}</span>
+      ))}
+    </div>
+
+    <p class="for-whom"><strong>{t.forWhomLabel}:</strong> {copy.forWhom}</p>
+    <p class="description">{copy.description}</p>
+    <p class="hours"><strong>{t.hoursLabel}:</strong> {hours}</p>
+
+    {poi.address && <p class="address">📍 {poi.address}</p>}
+
+    <div class="actions">
+      <a href={poi.mapsUrl} target="_blank" rel="noopener noreferrer" class="btn">🗺️ {t.mapButton}</a>
+      {poi.websiteUrl && (
+        <a href={poi.websiteUrl} target="_blank" rel="noopener noreferrer" class="btn secondary">
+          🌐 {t.websiteButton}
+        </a>
+      )}
+    </div>
+  </div>
+</article>
+
+<style>
+  .poi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .poi-image {
+    aspect-ratio: 3 / 2;
+    background: var(--surface-2);
+    line-height: 0;
+  }
+
+  .poi-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .poi-body {
+    padding: 1.1rem 1.2rem 1.3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .poi-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .poi-head h3 {
+    margin: 0;
+    font-size: 1.08rem;
+  }
+
+  .badge {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    white-space: nowrap;
+  }
+
+  .badge[data-type='unesco'] {
+    background: var(--accent-2);
+  }
+
+  .distance {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+  }
+
+  .for-whom,
+  .description,
+  .hours,
+  .address {
+    margin: 0;
+    font-size: 0.92rem;
+  }
+
+  .for-whom strong,
+  .hours strong {
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .description {
+    line-height: 1.55;
+  }
+
+  .hours {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .address {
+    color: var(--muted);
+    font-size: 0.82rem;
+  }
+
+  .actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-block;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 0.45rem 0.8rem;
+    border-radius: 8px;
+  }
+
+  .btn.secondary {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+</style>

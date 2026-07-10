@@ -1,0 +1,266 @@
+---
+import { verifySessionToken, SESSION_COOKIE } from '../../lib/auth';
+import { getSiteSettings, setSiteSettings, getAllPoiNotices, setPoiNotice } from '../../lib/site';
+import { poisByCategory, findPoi } from '../../data/guide/pois';
+import { categorySlugs, categoryIcons, type CategorySlug } from '../../data/guide/categories';
+
+export const prerender = false;
+
+const sessionSecret = import.meta.env.ADMIN_SESSION_SECRET;
+const token = Astro.cookies.get(SESSION_COOKIE)?.value;
+
+if (!sessionSecret || !(await verifySessionToken(sessionSecret, token))) {
+  return Astro.redirect('/admin');
+}
+
+let message = '';
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const action = String(form.get('action') ?? '');
+
+  if (action === 'logout') {
+    Astro.cookies.delete(SESSION_COOKIE, { path: '/' });
+    return Astro.redirect('/admin');
+  }
+
+  if (action === 'settings') {
+    const bookingUrl = String(form.get('bookingUrl') ?? '').trim();
+    const contactEmail = String(form.get('contactEmail') ?? '').trim();
+    if (!bookingUrl || !contactEmail) {
+      error = 'Link do rezerwacji i e-mail są wymagane.';
+    } else {
+      try {
+        await setSiteSettings({ bookingUrl, contactEmail });
+        message = 'Zapisano dane podstawowe.';
+      } catch (e) {
+        error = e instanceof Error ? e.message : 'Nie udało się zapisać.';
+      }
+    }
+  }
+
+  if (action === 'notice') {
+    const poiId = String(form.get('poiId') ?? '');
+    const notice = String(form.get('notice') ?? '');
+    const poi = findPoi(poiId);
+    if (!poi) {
+      error = 'Nieznane miejsce.';
+    } else {
+      try {
+        await setPoiNotice(poiId, notice);
+        message = `Zaktualizowano notatkę dla „${poi.name}”.`;
+      } catch (e) {
+        error = e instanceof Error ? e.message : 'Nie udało się zapisać.';
+      }
+    }
+  }
+}
+
+const settings = await getSiteSettings();
+const notices = await getAllPoiNotices();
+
+const categoryLabels: Record<CategorySlug, string> = {
+  restauracje: 'Restauracje i kawiarnie',
+  sklepy: 'Sklepy i punkty usługowe',
+  'dla-dzieci': 'Atrakcje dla rodzin',
+  natura: 'Natura, spacery, punkty widokowe',
+  rowery: 'Rowery i wypożyczalnie',
+  niepogoda: 'Atrakcje na niepogodę',
+  zamki: 'Zamki i pałace',
+  kultura: 'Kultura, muzea, miasteczka',
+  'lokalne-produkty': 'Lokalne produkty',
+  wycieczki: 'Wycieczki jednodniowe',
+};
+---
+
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Panel administratora — Dom z Piernika</title>
+  </head>
+  <body>
+    <header>
+      <h1>🏠 Dom z Piernika</h1>
+      <form method="POST">
+        <input type="hidden" name="action" value="logout" />
+        <button type="submit" class="logout">Wyloguj</button>
+      </form>
+    </header>
+
+    <main>
+      {message && <p class="msg success">{message}</p>}
+      {error && <p class="msg error">{error}</p>}
+
+      <section>
+        <h2>Dane podstawowe</h2>
+        <form method="POST" class="card settings-card">
+          <input type="hidden" name="action" value="settings" />
+
+          <label for="bookingUrl">Link do rezerwacji (Booking.com)</label>
+          <input id="bookingUrl" name="bookingUrl" type="url" value={settings.bookingUrl} required />
+
+          <label for="contactEmail">E-mail kontaktowy</label>
+          <input id="contactEmail" name="contactEmail" type="email" value={settings.contactEmail} required />
+
+          {settings.updatedAt && (
+            <p class="updated">Ostatnia aktualizacja: {new Date(settings.updatedAt).toLocaleString('pl-PL')}</p>
+          )}
+
+          <button type="submit">Zapisz</button>
+        </form>
+        <p class="hint">
+          Zdjęcia domu edytuje się wrzucając plik do <code>public/images/house/</code> i dopisując go w
+          <code>src/data/photos.ts</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2>Godziny / ceny w przewodniku</h2>
+        <p class="hint">
+          Pole „notatka” nadpisuje domyślny tekst godzin/cen dla danego miejsca na stronie (widoczne we
+          wszystkich językach). Zostaw puste, żeby wrócić do domyślnego opisu.
+        </p>
+
+        {categorySlugs.map((slug) => (
+          <details class="category-block">
+            <summary>{categoryIcons[slug]} {categoryLabels[slug]} ({poisByCategory(slug).length})</summary>
+            <div class="cards">
+              {poisByCategory(slug).map((poi) => (
+                <form method="POST" class="card">
+                  <input type="hidden" name="action" value="notice" />
+                  <input type="hidden" name="poiId" value={poi.id} />
+                  <h3>{poi.name}</h3>
+                  <label for={`notice-${poi.id}`}>Notatka (godziny / ceny)</label>
+                  <textarea id={`notice-${poi.id}`} name="notice" rows="2">{notices[poi.id]}</textarea>
+                  <button type="submit">Zapisz</button>
+                </form>
+              ))}
+            </div>
+          </details>
+        ))}
+      </section>
+    </main>
+  </body>
+</html>
+
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background: #1c140d;
+    color: #f4ede2;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #40311f;
+  }
+  h1 {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.5rem;
+  }
+  section {
+    margin-bottom: 2.5rem;
+  }
+  h2 {
+    font-size: 1.1rem;
+  }
+  .hint {
+    font-size: 0.82rem;
+    color: #c9b8a4;
+  }
+  .settings-card {
+    max-width: 480px;
+  }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    margin-top: 0.75rem;
+  }
+  .card {
+    background: #2a1f16;
+    border: 1px solid #40311f;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .card h3 {
+    margin: 0 0 0.25rem;
+    font-size: 0.95rem;
+  }
+  label {
+    font-size: 0.8rem;
+    color: #c9b8a4;
+  }
+  input[type='text'],
+  input[type='url'],
+  input[type='email'],
+  textarea {
+    background: #34271a;
+    border: 1px solid #40311f;
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+    color: #f4ede2;
+    font-size: 0.95rem;
+    font-family: inherit;
+  }
+  .updated {
+    font-size: 0.75rem;
+    color: #c9b8a4;
+    margin: 0;
+  }
+  button {
+    margin-top: 0.25rem;
+    background: #c1440e;
+    border: none;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+  }
+  .logout {
+    background: #40311f;
+    color: #f4ede2;
+  }
+  .msg {
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+  .msg.success {
+    background: rgba(47, 107, 79, 0.25);
+    color: #7fd6ac;
+  }
+  .msg.error {
+    background: rgba(255, 107, 107, 0.15);
+    color: #ff6b6b;
+  }
+  .category-block {
+    background: #241a12;
+    border: 1px solid #40311f;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.75rem;
+  }
+  .category-block summary {
+    cursor: pointer;
+    font-weight: 600;
+  }
+</style>

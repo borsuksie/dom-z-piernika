@@ -1,0 +1,194 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import CategoryCard from '../components/CategoryCard.astro';
+import { getDictionary, type Locale } from '../i18n';
+import { houseFacts } from '../data/house';
+import { categorySlugs, categoryIcons } from '../data/guide/categories';
+import { poisByCategory } from '../data/guide/pois';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = getDictionary(locale);
+
+const site = Astro.site ?? new URL('https://domzpiernika.pl');
+const pageUrl = new URL(`/${locale}/guide/`, site).toString();
+const homeUrl = new URL(`/${locale}/`, site).toString();
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: t.guideIndex.title,
+    url: pageUrl,
+    description: t.guideIndex.description,
+    inLanguage: locale,
+    isPartOf: { '@type': 'WebSite', name: t.meta.title, url: homeUrl },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: t.nav.home, item: homeUrl },
+      { '@type': 'ListItem', position: 2, name: t.nav.guide, item: pageUrl },
+    ],
+  },
+];
+---
+
+<BaseLayout locale={locale} title={t.guideIndex.title} description={t.guideIndex.description} path="guide/" jsonLd={jsonLd}>
+  <SiteHeader locale={locale} t={t} path="guide/" />
+
+  <main>
+    <nav class="breadcrumbs" aria-label="Breadcrumb">
+      <a href={`/${locale}/`}>{t.nav.home}</a>
+      <span aria-hidden="true">/</span>
+      <span aria-current="page">{t.nav.guide}</span>
+    </nav>
+
+    <section class="intro">
+      <h1>{t.guideIndex.title}</h1>
+      <p>{t.guideIndex.intro}</p>
+      <p class="disclaimer">{t.guideIndex.disclaimer}</p>
+    </section>
+
+    <section>
+      <h2>{t.guideIndex.categoriesHeading}</h2>
+      <div class="categories-grid">
+        {categorySlugs.map((slug) => (
+          <CategoryCard
+            locale={locale}
+            slug={slug}
+            icon={categoryIcons[slug]}
+            name={t.categories[slug].name}
+            description={t.categories[slug].description}
+            count={poisByCategory(slug).length}
+            placesLabel={t.guideCategory.placesCount}
+          />
+        ))}
+      </div>
+    </section>
+
+    <section class="recommendations">
+      <h2>⭐ {t.guideIndex.recommendationsHeading}</h2>
+      <div class="rec-grid">
+        {t.guideIndex.recommendations.map((rec) => (
+          <div class="rec-card">
+            <p class="rec-label">{rec.label}</p>
+            <p class="rec-value">{rec.value}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="history">
+      <h2>{t.guideIndex.historyHeading}</h2>
+      {t.guideIndex.historyParagraphs.map((p) => <p>{p}</p>)}
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>{t.footer.disclaimer}</p>
+    <p>© {new Date().getFullYear()} {houseFacts.name}. {t.footer.rights}</p>
+  </footer>
+</BaseLayout>
+
+<style>
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 3rem;
+  }
+
+  .breadcrumbs {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin-bottom: 1.5rem;
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .breadcrumbs a {
+    color: var(--muted);
+  }
+
+  section {
+    margin-bottom: 2.75rem;
+  }
+
+  .intro h1 {
+    font-size: clamp(1.9rem, 5vw, 2.6rem);
+    margin-bottom: 0.75rem;
+  }
+
+  .intro p {
+    color: var(--text);
+    max-width: 720px;
+    line-height: 1.65;
+  }
+
+  .disclaimer {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 0.85rem 1.1rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+  }
+
+  h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  .rec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+  }
+
+  .rec-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.25rem;
+  }
+
+  .rec-label {
+    margin: 0 0 0.35rem;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .rec-value {
+    margin: 0;
+    font-size: 0.94rem;
+    line-height: 1.5;
+  }
+
+  .history p {
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 760px;
+  }
+
+  .site-footer {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 2.5rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+</style>

@@ -1,0 +1,56 @@
+---
+import { locales, localeNames, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  /** Path after the locale prefix, e.g. "" for home, no leading/trailing slash. */
+  path?: string;
+  label: string;
+}
+
+const { locale, path = '', label } = Astro.props;
+---
+
+<div class="lang-switcher">
+  <label for="lang-select" class="sr-only">{label}</label>
+  <select id="lang-select" data-path={path}>
+    {locales.map((loc) => (
+      <option value={loc} selected={loc === locale}>
+        {localeNames[loc]}
+      </option>
+    ))}
+  </select>
+</div>
+
+<script>
+  const select = document.getElementById('lang-select') as HTMLSelectElement | null;
+  select?.addEventListener('change', () => {
+    const path = select.dataset.path ?? '';
+    const target = `/${select.value}/${path}`.replace(/\/+$/, '/');
+    window.location.href = target;
+  });
+</script>
+
+<style>
+  .lang-switcher select {
+    background: var(--surface-2);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>

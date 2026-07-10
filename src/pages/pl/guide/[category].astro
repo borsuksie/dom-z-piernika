@@ -1,0 +1,12 @@
+---
+import GuideCategoryPage from '../../../views/GuideCategoryPage.astro';
+import { isCategorySlug } from '../../../data/guide/categories';
+
+const { category } = Astro.params;
+
+if (!category || !isCategorySlug(category)) {
+  return Astro.redirect('/pl/guide/', 302);
+}
+---
+
+<GuideCategoryPage locale="pl" category={category} />

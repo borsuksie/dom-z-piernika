@@ -1,0 +1,59 @@
+---
+import LanguageSwitcher from './LanguageSwitcher.astro';
+import type { Locale, Dictionary } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  t: Dictionary;
+  path: string;
+}
+
+const { locale, t, path } = Astro.props;
+---
+
+<header class="site-header">
+  <a class="brand" href={`/${locale}/`}>🏠 {t.hero.title}</a>
+  <nav>
+    <a href={`/${locale}/`}>{t.nav.home}</a>
+    <a href={`/${locale}/guide/`}>{t.nav.guide}</a>
+    <LanguageSwitcher locale={locale} path={path} label={t.nav.selectLanguage} />
+  </nav>
+</header>
+
+<style>
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    max-width: 1080px;
+    margin: 0 auto;
+  }
+
+  .brand {
+    font-weight: 800;
+    font-size: 1.25rem;
+    text-decoration: none;
+    color: var(--text);
+  }
+
+  nav {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  nav a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  nav a:hover {
+    color: var(--accent);
+  }
+</style>

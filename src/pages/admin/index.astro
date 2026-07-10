@@ -1,0 +1,124 @@
+---
+import { createSessionToken, verifySessionToken, SESSION_COOKIE, SESSION_TTL_SECONDS } from '../../lib/auth';
+
+export const prerender = false;
+
+const sessionSecret = import.meta.env.ADMIN_SESSION_SECRET;
+const adminPassword = import.meta.env.ADMIN_PASSWORD;
+
+const existingToken = Astro.cookies.get(SESSION_COOKIE)?.value;
+if (sessionSecret && (await verifySessionToken(sessionSecret, existingToken))) {
+  return Astro.redirect('/admin/dashboard');
+}
+
+let error = '';
+const configError = !sessionSecret || !adminPassword;
+
+if (Astro.request.method === 'POST' && !configError) {
+  const form = await Astro.request.formData();
+  const password = String(form.get('password') ?? '');
+
+  if (password === adminPassword) {
+    const token = await createSessionToken(sessionSecret);
+    Astro.cookies.set(SESSION_COOKIE, token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: SESSION_TTL_SECONDS,
+    });
+    return Astro.redirect('/admin/dashboard');
+  }
+  error = 'Nieprawidłowe hasło.';
+}
+---
+
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Panel administratora — Dom z Piernika</title>
+  </head>
+  <body>
+    <main>
+      <h1>🏠 Dom z Piernika — panel</h1>
+
+      {configError && (
+        <p class="error">
+          Brak konfiguracji: ustaw zmienne środowiskowe <code>ADMIN_PASSWORD</code> i
+          <code>ADMIN_SESSION_SECRET</code>.
+        </p>
+      )}
+
+      {!configError && (
+        <form method="POST">
+          <label for="password">Hasło</label>
+          <input id="password" name="password" type="password" required autofocus />
+          <button type="submit">Zaloguj</button>
+          {error && <p class="error">{error}</p>}
+        </form>
+      )}
+    </main>
+  </body>
+</html>
+
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1c140d;
+    color: #f4ede2;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  main {
+    width: min(360px, 90vw);
+  }
+  h1 {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    background: #2a1f16;
+    border: 1px solid #40311f;
+    border-radius: 12px;
+    padding: 1.5rem;
+  }
+  label {
+    font-size: 0.85rem;
+    color: #c9b8a4;
+  }
+  input {
+    background: #34271a;
+    border: 1px solid #40311f;
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    color: #f4ede2;
+    font-size: 1rem;
+  }
+  button {
+    margin-top: 0.5rem;
+    background: #c1440e;
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 0.75rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+  }
+  .error {
+    color: #ff8a65;
+    font-size: 0.85rem;
+  }
+</style>

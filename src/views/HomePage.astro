@@ -1,0 +1,305 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Gallery from '../components/Gallery.astro';
+import CategoryCard from '../components/CategoryCard.astro';
+import { getDictionary, type Locale } from '../i18n';
+import { houseFacts, amenityOrder, amenityIcons } from '../data/house';
+import { photos } from '../data/photos';
+import { categorySlugs, categoryIcons } from '../data/guide/categories';
+import { poisByCategory } from '../data/guide/pois';
+import { getSiteSettings } from '../lib/site';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const t = getDictionary(locale);
+const settings = await getSiteSettings();
+
+const site = Astro.site ?? new URL('https://domzpiernika.pl');
+const pageUrl = new URL(`/${locale}/`, site).toString();
+
+const featuredPhotos = photos.filter((p) => p.featured);
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'LodgingBusiness',
+    name: houseFacts.name,
+    description: t.meta.description,
+    url: pageUrl,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: houseFacts.address,
+      addressCountry: 'PL',
+    },
+    image: featuredPhotos.slice(0, 5).map((p) => new URL(p.src, site).toString()),
+    inLanguage: locale,
+  },
+];
+---
+
+<BaseLayout locale={locale} title={t.meta.title} description={t.meta.description} path="" jsonLd={jsonLd} image={featuredPhotos[0]?.src}>
+  <SiteHeader locale={locale} t={t} path="" />
+
+  <main>
+    <section class="hero">
+      <h1>{t.hero.title}</h1>
+      <p class="subtitle">{t.hero.subtitle}</p>
+      <div class="hero-cta">
+        <a class="btn primary" href={settings.bookingUrl} target="_blank" rel="noopener noreferrer">
+          🗓️ {t.hero.ctaBook}
+        </a>
+        <a class="btn secondary" href="#przewodnik">{t.hero.ctaGuide}</a>
+      </div>
+    </section>
+
+    <section class="gallery-section">
+      <Gallery photos={featuredPhotos} alt={t.hero.title} />
+    </section>
+
+    <section class="about">
+      <h2>{t.about.heading}</h2>
+      {t.about.paragraphs.map((p) => <p>{p}</p>)}
+      <p class="address-line">
+        <strong>{t.about.addressLabel}:</strong> {houseFacts.address} ·{' '}
+        <a href={houseFacts.mapsUrl} target="_blank" rel="noopener noreferrer">{t.about.mapLabel} →</a>
+      </p>
+    </section>
+
+    <section class="highlights">
+      <h2>{t.highlights.heading}</h2>
+      <div class="chips">
+        {t.highlights.items.map((item) => (
+          <div class="chip">✨ {item}</div>
+        ))}
+      </div>
+    </section>
+
+    <section class="amenities">
+      <h2>{t.amenities.heading}</h2>
+      <div class="grid">
+        {amenityOrder.map((key) => (
+          <div class="amenity">
+            <span class="icon">{amenityIcons[key]}</span>
+            <span>{t.amenities.items[key]}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    <section class="house-rules">
+      <h2>{t.houseRules.heading}</h2>
+      <p>{t.houseRules.intro}</p>
+      <ul>
+        {t.houseRules.items.map((item) => <li>{item}</li>)}
+      </ul>
+    </section>
+
+    <section class="booking">
+      <h2>{t.booking.heading}</h2>
+      <p>{t.booking.text}</p>
+      <a class="btn primary large" href={settings.bookingUrl} target="_blank" rel="noopener noreferrer">
+        🗓️ {t.booking.button}
+      </a>
+      <p class="contact">
+        {t.booking.contactLabel} <a href={`mailto:${settings.contactEmail}`}>{settings.contactEmail}</a>
+      </p>
+    </section>
+
+    <section class="guide-teaser" id="przewodnik">
+      <h2>{t.guideTeaser.heading}</h2>
+      <p>{t.guideTeaser.text}</p>
+      <div class="categories-grid">
+        {categorySlugs.map((slug) => (
+          <CategoryCard
+            locale={locale}
+            slug={slug}
+            icon={categoryIcons[slug]}
+            name={t.categories[slug].name}
+            description={t.categories[slug].description}
+            count={poisByCategory(slug).length}
+            placesLabel={t.guideCategory.placesCount}
+          />
+        ))}
+      </div>
+      <div class="center">
+        <a class="btn primary" href={`/${locale}/guide/`}>{t.guideTeaser.button} →</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>{t.footer.disclaimer}</p>
+    <p>© {new Date().getFullYear()} {houseFacts.name}. {t.footer.rights}</p>
+  </footer>
+</BaseLayout>
+
+<style>
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 1.25rem 3rem;
+  }
+
+  section {
+    margin: 3rem 0;
+  }
+
+  .hero {
+    text-align: center;
+    padding: 2.5rem 0 1.5rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(2.2rem, 6vw, 3.2rem);
+    margin: 0 0 0.5rem;
+  }
+
+  .hero .subtitle {
+    color: var(--muted);
+    font-size: 1.15rem;
+    max-width: 560px;
+    margin: 0 auto 1.5rem;
+  }
+
+  .hero-cta {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    display: inline-block;
+    text-decoration: none;
+    font-weight: 700;
+    padding: 0.75rem 1.4rem;
+    border-radius: 999px;
+    font-size: 0.98rem;
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .btn.secondary {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .btn.large {
+    font-size: 1.1rem;
+    padding: 0.9rem 1.8rem;
+  }
+
+  h2 {
+    font-size: 1.6rem;
+    margin-bottom: 1rem;
+  }
+
+  .about p {
+    color: var(--text);
+    line-height: 1.7;
+    max-width: 760px;
+  }
+
+  .address-line {
+    color: var(--muted);
+  }
+
+  .address-line a {
+    font-weight: 600;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.6rem 1.1rem;
+    font-size: 0.92rem;
+  }
+
+  .amenities .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .amenity {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    font-size: 0.92rem;
+  }
+
+  .amenity .icon {
+    font-size: 1.3rem;
+  }
+
+  .house-rules {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 1.75rem;
+  }
+
+  .house-rules ul {
+    margin: 0.75rem 0 0;
+    padding-left: 1.25rem;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  .booking {
+    text-align: center;
+    background: var(--surface-2);
+    border-radius: var(--radius);
+    padding: 2.5rem 1.5rem;
+  }
+
+  .booking p {
+    color: var(--muted);
+    max-width: 520px;
+    margin: 0 auto 1.25rem;
+  }
+
+  .booking .contact {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  .center {
+    text-align: center;
+    margin-top: 1rem;
+  }
+
+  .site-footer {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 1.5rem 1.25rem 2.5rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
