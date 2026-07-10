@@ -6,12 +6,14 @@ interface Props {
   locale: Locale;
   t: Dictionary;
   path: string;
+  /** Use on top of a full-bleed photo hero: transparent background, white text. */
+  transparent?: boolean;
 }
 
-const { locale, t, path } = Astro.props;
+const { locale, t, path, transparent = false } = Astro.props;
 ---
 
-<header class="site-header">
+<header class="site-header" data-transparent={transparent}>
   <a class="brand" href={`/${locale}/`}>🏠 {t.hero.title}</a>
   <nav>
     <a href={`/${locale}/`}>{t.nav.home}</a>
@@ -38,22 +40,40 @@ const { locale, t, path } = Astro.props;
     font-size: 1.25rem;
     text-decoration: none;
     color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 
   nav {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.25rem;
   }
 
   nav a {
     color: var(--muted);
     text-decoration: none;
-    font-size: 0.92rem;
+    font-size: 0.85rem;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   nav a:hover {
+    color: var(--accent);
+  }
+
+  .site-header[data-transparent='true'] {
+    max-width: none;
+    border-bottom-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .site-header[data-transparent='true'] .brand,
+  .site-header[data-transparent='true'] nav a {
+    color: #fff;
+  }
+
+  .site-header[data-transparent='true'] nav a:hover {
     color: var(--accent);
   }
 </style>
