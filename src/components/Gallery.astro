@@ -99,6 +99,10 @@ const { photos, alt } = Astro.props;
     padding: 2rem;
   }
 
+  .lightbox[hidden] {
+    display: none;
+  }
+
   .lightbox img {
     max-width: min(1100px, 92vw);
     max-height: 86vh;
