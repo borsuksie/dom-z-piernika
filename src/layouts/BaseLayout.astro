@@ -1,6 +1,5 @@
 ---
 import Analytics from '@vercel/analytics/astro';
-import SpeedInsights from '@vercel/speed-insights/astro';
 import { locales, localeTags, type Locale } from '../i18n';
 
 interface Props {
@@ -64,7 +63,6 @@ const ogImage = image ? new URL(image, site).toString() : undefined;
   <body>
     <slot />
     <Analytics />
-    <SpeedInsights />
   </body>
 </html>
 
