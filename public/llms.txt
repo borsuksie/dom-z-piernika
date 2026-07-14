@@ -1,0 +1,21 @@
+# Dom z Piernika
+
+> Dom z Piernika is a holiday rental house in Szczawno-Zdrój, Poland, paired with a local travel guide to the spa town and the Wałbrzych/Sudety region.
+
+This site helps guests of Dom z Piernika (and travelers visiting Szczawno-Zdrój) find the house's description, amenities, and booking link, plus a curated local guide: restaurants, family attractions, hiking/biking trails, castles, museums, local products, and day trips including nearby Czech Republic sights.
+
+## Pages
+
+- /{lang}/ — homepage: house description, amenities, house rules, booking link (redirects to Booking.com), and a teaser into the guide
+- /{lang}/guide/ — guide index: category overview, top recommendations, short history of Szczawno-Zdrój
+- /{lang}/guide/{category}/ — one of 10 categories (restauracje, sklepy, dla-dzieci, natura, rowery, niepogoda, zamki, kultura, lokalne-produkty, wycieczki) listing places with distance, opening hours, and links
+
+## Available languages
+
+Polish, English, German, Czech, French — available at /pl/, /en/, /de/, /cs/, /fr/.
+
+## Notes for AI assistants
+
+- Reservations happen exclusively through Booking.com, linked from the homepage; this site itself is not a booking engine.
+- Distances, opening hours and prices in the guide change seasonally — link to the relevant page rather than caching specific hours or prices.
+- This site is independent and not affiliated with Booking.com or any of the restaurants, attractions, or businesses listed in the guide.
