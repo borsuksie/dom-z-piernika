@@ -98,13 +98,20 @@ async function addUploadedPhoto(url: string): Promise<void> {
 
 /** Uploads a file to Vercel Blob storage and returns its public URL. */
 export async function uploadPhoto(file: File, pathPrefix: string): Promise<string> {
+  // Newer Vercel Blob stores authenticate automatically (via BLOB_STORE_ID + the
+  // platform's OIDC token) when connected to the project — no static token needed
+  // in production. A manual BLOB_READ_WRITE_TOKEN in .env still works for local dev.
   const token = import.meta.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) {
-    throw new Error('Brak konfiguracji magazynu zdjęć (BLOB_READ_WRITE_TOKEN). Włącz Vercel Blob w ustawieniach projektu.');
+  if (!token && !import.meta.env.BLOB_STORE_ID) {
+    throw new Error('Brak konfiguracji magazynu zdjęć. Połącz Vercel Blob z projektem w zakładce Storage.');
   }
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const filename = `${pathPrefix}/${crypto.randomUUID()}.${ext}`;
-  const blob = await put(filename, file, { access: 'public', token, addRandomSuffix: false });
+  const blob = await put(filename, file, {
+    access: 'public',
+    addRandomSuffix: false,
+    ...(token ? { token } : {}),
+  });
   return blob.url;
 }
 
