@@ -98,9 +98,11 @@ async function addUploadedPhoto(url: string): Promise<void> {
 
 /** Uploads a file to Vercel Blob storage and returns its public URL. */
 export async function uploadPhoto(file: File, pathPrefix: string): Promise<string> {
-  // A connected Blob store authenticates automatically at runtime on Vercel.
-  // BLOB_READ_WRITE_TOKEN is only needed as a manual override (e.g. local dev).
-  const token = import.meta.env.BLOB_READ_WRITE_TOKEN;
+  // BLOB_READ_WRITE_TOKEN is marked "Sensitive" in Vercel, which means it's only
+  // injected into the real runtime process.env — reading it via import.meta.env
+  // can get statically inlined at build time (before the value existed) by Vite.
+  // process.env is read fresh on every invocation, so use that instead.
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const filename = `${pathPrefix}/${crypto.randomUUID()}.${ext}`;
   try {
