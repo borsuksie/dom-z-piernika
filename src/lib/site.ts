@@ -114,7 +114,8 @@ export async function uploadPhoto(file: File, pathPrefix: string): Promise<strin
     return blob.url;
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    throw new Error(`Nie udało się wgrać zdjęcia do Vercel Blob: ${detail}`);
+    const blobKeys = Object.keys(process.env).filter((k) => k.includes('BLOB')).join(', ') || '(brak)';
+    throw new Error(`Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [debug BLOB* keys: ${blobKeys}]`);
   }
 }
 
