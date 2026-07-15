@@ -98,11 +98,15 @@ async function addUploadedPhoto(url: string): Promise<void> {
 
 /** Uploads a file to Vercel Blob storage and returns its public URL. */
 export async function uploadPhoto(file: File, pathPrefix: string): Promise<string> {
-  // @astrojs/vercel statically detects import.meta.env.X references and only
-  // bundles those specific vars into the deployed function's environment — a
-  // plain process.env.X read may not be included at all. Try both, preferring
-  // the statically-detectable one.
-  const token = import.meta.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
+  // Variables named BLOB_* mysteriously never reach this function's runtime env
+  // on this project (neither import.meta.env nor process.env sees them), even
+  // though they're visibly configured in Vercel. Using a differently-named var
+  // for the same token as a workaround.
+  const token =
+    import.meta.env.PHOTO_UPLOAD_TOKEN ||
+    process.env.PHOTO_UPLOAD_TOKEN ||
+    import.meta.env.BLOB_READ_WRITE_TOKEN ||
+    process.env.BLOB_READ_WRITE_TOKEN;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const filename = `${pathPrefix}/${crypto.randomUUID()}.${ext}`;
   try {
@@ -114,10 +118,10 @@ export async function uploadPhoto(file: File, pathPrefix: string): Promise<strin
     return blob.url;
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    const processBlobKeys = Object.keys(process.env).filter((k) => k.includes('BLOB')).join(', ') || '(brak)';
-    const importMetaBlobKeys = Object.keys(import.meta.env).filter((k) => k.includes('BLOB')).join(', ') || '(brak)';
+    const processKeys = Object.keys(process.env).length;
+    const importMetaKeys = Object.keys(import.meta.env).length;
     throw new Error(
-      `Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [process.env BLOB*: ${processBlobKeys}] [import.meta.env BLOB*: ${importMetaBlobKeys}]`
+      `Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [process.env total keys: ${processKeys}] [import.meta.env total keys: ${importMetaKeys}]`
     );
   }
 }
