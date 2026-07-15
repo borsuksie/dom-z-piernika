@@ -118,10 +118,16 @@ export async function uploadPhoto(file: File, pathPrefix: string): Promise<strin
     return blob.url;
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    const processKeys = Object.keys(process.env).length;
-    const importMetaKeys = Object.keys(import.meta.env).length;
+    const check = (obj: Record<string, unknown>, key: string) =>
+      `${key} in=${key in obj} truthy=${Boolean(obj[key])} len=${String(obj[key] ?? '').length}`;
+    const report = [
+      check(process.env, 'PHOTO_UPLOAD_TOKEN'),
+      check(process.env, 'BLOB_READ_WRITE_TOKEN'),
+      check(import.meta.env as unknown as Record<string, unknown>, 'PHOTO_UPLOAD_TOKEN'),
+      check(import.meta.env as unknown as Record<string, unknown>, 'BLOB_READ_WRITE_TOKEN'),
+    ].join(' | ');
     throw new Error(
-      `Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [process.env total keys: ${processKeys}] [import.meta.env total keys: ${importMetaKeys}]`
+      `Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [${report}]`
     );
   }
 }
