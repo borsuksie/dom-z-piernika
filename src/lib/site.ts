@@ -98,11 +98,11 @@ async function addUploadedPhoto(url: string): Promise<void> {
 
 /** Uploads a file to Vercel Blob storage and returns its public URL. */
 export async function uploadPhoto(file: File, pathPrefix: string): Promise<string> {
-  // BLOB_READ_WRITE_TOKEN is marked "Sensitive" in Vercel, which means it's only
-  // injected into the real runtime process.env — reading it via import.meta.env
-  // can get statically inlined at build time (before the value existed) by Vite.
-  // process.env is read fresh on every invocation, so use that instead.
-  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  // @astrojs/vercel statically detects import.meta.env.X references and only
+  // bundles those specific vars into the deployed function's environment — a
+  // plain process.env.X read may not be included at all. Try both, preferring
+  // the statically-detectable one.
+  const token = import.meta.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const filename = `${pathPrefix}/${crypto.randomUUID()}.${ext}`;
   try {
@@ -114,8 +114,11 @@ export async function uploadPhoto(file: File, pathPrefix: string): Promise<strin
     return blob.url;
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    const blobKeys = Object.keys(process.env).filter((k) => k.includes('BLOB')).join(', ') || '(brak)';
-    throw new Error(`Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [debug BLOB* keys: ${blobKeys}]`);
+    const processBlobKeys = Object.keys(process.env).filter((k) => k.includes('BLOB')).join(', ') || '(brak)';
+    const importMetaBlobKeys = Object.keys(import.meta.env).filter((k) => k.includes('BLOB')).join(', ') || '(brak)';
+    throw new Error(
+      `Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [process.env BLOB*: ${processBlobKeys}] [import.meta.env BLOB*: ${importMetaBlobKeys}]`
+    );
   }
 }
 
