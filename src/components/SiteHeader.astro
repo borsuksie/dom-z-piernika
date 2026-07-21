@@ -36,12 +36,13 @@ const { locale, t, path, transparent = false } = Astro.props;
   }
 
   .brand {
-    font-weight: 800;
-    font-size: 1.25rem;
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-style: italic;
+    font-size: 1.4rem;
     text-decoration: none;
     color: var(--text);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
+    letter-spacing: 0;
   }
 
   nav {
