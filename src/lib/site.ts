@@ -98,15 +98,7 @@ async function addUploadedPhoto(url: string): Promise<void> {
 
 /** Uploads a file to Vercel Blob storage and returns its public URL. */
 export async function uploadPhoto(file: File, pathPrefix: string): Promise<string> {
-  // Variables named BLOB_* mysteriously never reach this function's runtime env
-  // on this project (neither import.meta.env nor process.env sees them), even
-  // though they're visibly configured in Vercel. Using a differently-named var
-  // for the same token as a workaround.
-  const token =
-    import.meta.env.PHOTO_UPLOAD_TOKEN ||
-    process.env.PHOTO_UPLOAD_TOKEN ||
-    import.meta.env.BLOB_READ_WRITE_TOKEN ||
-    process.env.BLOB_READ_WRITE_TOKEN;
+  const token = import.meta.env.PHOTO_UPLOAD_TOKEN || import.meta.env.BLOB_READ_WRITE_TOKEN;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
   const filename = `${pathPrefix}/${crypto.randomUUID()}.${ext}`;
   try {
@@ -118,17 +110,7 @@ export async function uploadPhoto(file: File, pathPrefix: string): Promise<strin
     return blob.url;
   } catch (e) {
     const detail = e instanceof Error ? e.message : String(e);
-    const check = (obj: Record<string, unknown>, key: string) =>
-      `${key} in=${key in obj} truthy=${Boolean(obj[key])} len=${String(obj[key] ?? '').length}`;
-    const report = [
-      check(process.env, 'PHOTO_UPLOAD_TOKEN'),
-      check(process.env, 'BLOB_READ_WRITE_TOKEN'),
-      check(import.meta.env as unknown as Record<string, unknown>, 'PHOTO_UPLOAD_TOKEN'),
-      check(import.meta.env as unknown as Record<string, unknown>, 'BLOB_READ_WRITE_TOKEN'),
-    ].join(' | ');
-    throw new Error(
-      `Nie udało się wgrać zdjęcia do Vercel Blob: ${detail} [${report}]`
-    );
+    throw new Error(`Nie udało się wgrać zdjęcia do Vercel Blob: ${detail}`);
   }
 }
 
